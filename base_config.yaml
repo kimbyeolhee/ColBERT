@@ -1,0 +1,6 @@
+model:
+  name_or_path: klue/bert-base
+
+utils:
+  seed : 42
+  no_cuda : False
