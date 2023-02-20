@@ -4,6 +4,7 @@ import sys
 
 from omegaconf import OmegaConf
 
+from data_loader import load_dataset
 from utils import init_logger, load_tokenizer, set_seed
 
 
@@ -15,9 +16,10 @@ def main(args):
     init_logger()
     set_seed(config)
 
-    load_tokenizer(config)
+    tokenizer = load_tokenizer(config)
 
     # load dataset
+    load_dataset(config, tokenizer, "train")
 
     # load model
 
