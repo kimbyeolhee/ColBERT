@@ -19,4 +19,7 @@ def init_logger():
                         level=logging.INFO)
 
 def load_tokenizer(config):
-    return AutoTokenizer.from_pretrained(config.model.name_or_path)
+    special_tokens = {"additional_special_tokens": ["[Q]", "[D]"]}
+    tokenizer = AutoTokenizer.from_pretrained(config.model.name_or_path)
+    tokenizer.add_special_tokens(special_tokens)
+    return tokenizer
