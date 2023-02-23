@@ -13,6 +13,7 @@ class ColBERT(BertPreTrainedModel):
         self.context_maxlen = context_maxlen
         self.similarity_metric = similarity_metric
         self.dim = dim
+        self.batch = 8
 
         self.mask_punctuation = mask_punctuation
         self.skiplist = {}
@@ -29,7 +30,8 @@ class ColBERT(BertPreTrainedModel):
         Q = self.query(**q_inputs)
         D = self.doc(**c_inputs)
 
-        self.score(Q, D)
+        score = self.score(Q, D)
+        return score 
 
     def mask(self, input_ids):
         # punctuation is not considered as part of the document
@@ -46,7 +48,8 @@ class ColBERT(BertPreTrainedModel):
         D = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)[0] # (batch_size, context_maxlen, hidden_size)
         D = self.linear(D) # (batch_size, context_maxlen, dim)
 
-        mask = torch.tensor(self.mask(input_ids)).unsqueeze(2).float() # (batch_size, context_maxlen) -> (batch_size, context_maxlen, 1) 
+        # mask out padding and punctuation
+        mask = torch.tensor(self.mask(input_ids), device=D.device, dtype=D.dtype).unsqueeze(2) # (batch_size, context_maxlen) -> (batch_size, context_maxlen, 1) 
         D = D * mask # (batch_size, context_maxlen, dim)
 
         D = torch.nn.functional.normalize(D, p=2, dim=2) 
@@ -55,15 +58,13 @@ class ColBERT(BertPreTrainedModel):
 
     def score(self, Q, D):
         if self.similarity_metric == "cosine":
-            print("Q shape: ", Q.shape) # (batch_size, question_maxlen, dim)
-            print("D shape: ", D.shape) # (batch_size, context_maxlen, dim)
-            sim_scores = Q @ D.permute(0, 2, 1) # (batch_size, question_maxlen, context_maxlen)
-            max_score = sim_scores.max(dim=2).values # (batch_size, question_maxlen)
-            sum_max_score = max_score.sum(dim=1) # (batch_size)
-            print("sim_scores shape: ", sim_scores.shape)
-            print("max_score shape: ", max_score.shape)
-            print("sum_max_score shape: ", sum_max_score.shape)
-
+            # Q : (batch_size, question_maxlen, dim)
+            # D : (batch_size, context_maxlen, dim)
+            Q = Q.view(self.batch, 1, -1, self.dim) # (batch_size, 1, question_maxlen, dim)
+            D = D.transpose(1, 2) # (batch_size, dim, context_maxlen)
+            scores = torch.matmul(Q, D) # (batch_size, batch_size, question_maxlen, context_maxlen)
+            max_scores = torch.max(scores, dim=3)[0] # (batch_size, batch_size, question_maxlen)
+            sum_max_score = torch.sum(max_scores, dim=2) # (batch_size, batch_size)
             return sum_max_score
         
         else:
