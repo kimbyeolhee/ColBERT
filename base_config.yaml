@@ -1,0 +1,30 @@
+data:
+  train_path: data/train_dataset/train
+  valid_path: data/train_dataset/validation
+  test_path: data/test_dataset/validation
+  wiki_path: data/wikipedia_documents.json
+
+model:
+  name_or_path: klue/bert-base
+  similarity_metric: cosine
+  dim: 128
+  mask_punctuation: True
+
+tokenizer:
+  question_maxlen: 128
+  context_maxlen: 512
+
+utils:
+  seed : 42
+  no_cuda : False
+
+trainer:
+  output_dir: saved_models
+  evaluation_strategy: epoch
+  per_device_train_batch_size: 8
+  per_device_eval_batch_size: 8
+  num_train_epochs: 1
+  weight_decay: 0.01
+  learning_rate: 1e-5
+  adam_epsilon: 1e-8
+  radient_accumulation_steps: 1
